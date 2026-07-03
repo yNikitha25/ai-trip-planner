@@ -1,0 +1,103 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Trip Planner</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="sidebar" aria-label="Trip planner navigation">
+        <div class="brand">
+          <div class="brand-icon" aria-hidden="true">🌴</div>
+          <div>
+            <h1>AI Trip Planner</h1>
+            <p>Plan Smarter. Travel Better.</p>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <a href="#assistant" class="active"><span>⌂</span>Dashboard</a>
+          <a href="#destinations"><span>⌖</span>Destinations</a>
+          <a href="#itinerary"><span>▣</span>Itinerary Planner</a>
+          <a href="#budget"><span>▤</span>Budget Estimator</a>
+          <a href="#hotels"><span>▰</span>Hotels</a>
+          <a href="#attractions"><span>▢</span>Attractions</a>
+          <a href="#weather"><span>☼</span>Weather</a>
+          <a href="#packing"><span>▥</span>Packing List</a>
+          <a href="#food"><span>♨</span>Food</a>
+          <a href="#tips"><span>♧</span>Travel Tips</a>
+          <a href="#profile"><span>♙</span>Profile</a>
+        </nav>
+
+        <div class="travel-art" aria-hidden="true">
+          <div class="suitcase"></div>
+          <div class="hat"></div>
+          <div class="map"></div>
+          <div class="pin"></div>
+        </div>
+
+        <div class="help-card">
+          <div class="help-icon" aria-hidden="true">♬</div>
+          <div>
+            <strong>Need Help?</strong>
+            <span>Ask our AI assistant anytime!</span>
+          </div>
+        </div>
+      </aside>
+
+      <section class="content">
+        <header class="topbar">
+          <div class="page-title">
+            <button class="menu-button" type="button" aria-label="Menu"><span></span><span></span><span></span></button>
+            <h2>Dashboard</h2>
+          </div>
+          <div class="top-actions">
+            <button id="statusButton" class="sun-button" type="button" title="Check model status" aria-label="Check model status">☼</button>
+            <div class="avatar" aria-hidden="true"></div>
+            <button class="user-menu" type="button">Hello, Traveler! <span>⌄</span></button>
+          </div>
+        </header>
+
+        <section id="assistant" class="assistant-panel" aria-label="AI Trip Planner Assistant">
+          <div class="assistant-heading">
+            <div class="bot-badge" aria-hidden="true">🤖</div>
+            <h3>AI Trip Planner Assistant</h3>
+            <p>Ask me anything about your trip. I'll help you plan the perfect journey!</p>
+          </div>
+
+          <div class="chat-window" id="chatWindow" aria-live="polite"></div>
+
+          <div class="suggestions" aria-label="Suggested actions">
+            <button type="button" data-prompt="Show hotels for my destination">Show Hotels</button>
+            <button type="button" data-prompt="Top attractions for my destination">Top Attractions</button>
+            <button type="button" data-prompt="Weather for my destination">Weather</button>
+            <button type="button" data-prompt="Budget Estimation">Budget Estimation</button>
+            <button type="button" data-prompt="Packing List">Packing List</button>
+          </div>
+
+          <form id="chatForm" class="chat-form">
+            <input id="messageInput" type="text" placeholder="Type your travel query..." autocomplete="off" />
+            <button type="submit" aria-label="Send message">➤</button>
+          </form>
+
+          <p class="disclaimer">AI responses may not always be 100% accurate. Please verify important details.</p>
+        </section>
+
+        <section id="viewPanel" class="detail-panel" hidden></section>
+      </section>
+    </main>
+
+    <script src="app.js?v=20260703-blue-restore"></script>
+  </body>
+</html>
+
+
+
+
+
+
+
+
+
