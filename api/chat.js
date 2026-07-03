@@ -1,12 +1,3 @@
-﻿const http = require("http");
-const fs = require("fs");
-const path = require("path");
-
-const PORT = Number(process.env.PORT || 5000);
-const MODEL = process.env.OLLAMA_MODEL || "llama3";
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434/api/chat";
-const OLLAMA_TIMEOUT_MS = Number(process.env.OLLAMA_TIMEOUT_MS || 3000);
-const PUBLIC_DIR = path.join(__dirname, "public");
 
 const AI_TRIP_PLANNER_SYSTEM_PROMPT = `You are AI Trip Planner, a professional AI travel assistant. Your purpose is to help users plan complete trips with accurate, personalized, and well-organized travel information.
 
@@ -278,132 +269,67 @@ function buildMissingDetailsReply(message) {
 function buildFallbackPlan(message) {
   const missingReply = buildMissingDetailsReply(message);
   if (missingReply) return missingReply;
-
-  const { destination, days, budget, budgetValue } = extractTripDetails(message);
-  const profile = profileForDestination(destination);
-  const dayCount = Math.min(days, 10);
-  const split = profile.budgetSplit;
-  const budgetLines = buildBudgetLines(budgetValue, split);
-  const hotelBudget = budgetValue ? budgetValue * split.stay / 100 : 9000;
-  const perNight = Math.max(1200, Math.round(hotelBudget / Math.max(days - 1, 1)));
-  const dayLines = Array.from({ length: dayCount }, (_, index) => {
-    const day = index + 1;
-    const attraction = profile.attractions[index % profile.attractions.length];
-    const food = profile.food[index % profile.food.length];
-    return `Day ${day}:\n- Morning: Start with ${attraction}.\n- Afternoon: Try ${food} and visit a nearby local area.\n- Evening: Relax, shop, or enjoy a scenic walk/night view.`;
-  }).join("\n\n");
-
-  return `🌍 Destination:\n${destination}\n\n📅 Duration:\n${days} Days\n\n📝 Trip Overview:\nA ${profile.type} focused trip covering local attractions, food, practical transport, packing, and budget planning for ${destination}.\n\n💰 Budget Breakdown:\n${budgetLines}\nTotal Estimated Cost: ${budget}\n\n🗓️ Day-wise Itinerary:\n${dayLines}\n\n🏨 Hotel Recommendations:\n- Name: Budget Comfort Stay\n  Approximate Price per Night: ${formatINR(perNight)}\n  Rating: 4.1/5\n  Location: Central / main tourist area\n  Suitable For: Budget travelers\n- Name: City View / Local Boutique Hotel\n  Approximate Price per Night: ${formatINR(perNight + 900)}\n  Rating: 4.3/5\n  Location: Near popular attractions\n  Suitable For: Couples and families\n- Name: Premium Leisure Resort\n  Approximate Price per Night: ${formatINR(perNight + 1800)}\n  Rating: 4.5/5\n  Location: Scenic or quieter area\n  Suitable For: Comfort-focused travelers\n\n📍 Top Attractions:\n${profile.attractions.map(item => `- ${item}`).join("\n")}\n\n🍴 Local Food:\n${profile.food.map(item => `- ${item}`).join("\n")}\n\n🎒 Packing Essentials:\n${profile.packing.map(item => `- ${item}`).join("\n")}\n\n🌦️ Weather:\n${profile.bestTime}\n\n🚕 Local Transportation:\n- Cab / taxi for comfort\n- Local bus or metro where available\n- Rental bike/scooter if safe and permitted\n- Walking for markets and compact tourist areas\n\n💡 Travel Tips:\n- Best time to visit: ${profile.bestTime}\n- Safety: Keep ID, phone, and cash secure in crowded areas.\n- Local language: Use English/Hindi or the common local language where applicable.\n- Currency: Indian Rupee for Indian destinations; verify currency for international trips.\n- Emergency number: 112 in India; verify local emergency numbers abroad.\n- Avoid: Overpaying without checking prices and booking non-refundable stays without verifying reviews.\n\n🎯 Nearby Attractions:\n${profile.attractions.slice(1, 4).map(item => `- ${item}`).join("\n")}\n\nWould you like to update the budget, change the destination, view hotels, explore attractions, check the weather, or save this trip?`;
 }
-async function handleChat(req, res) {
-  let message = "";
 
+
+module.exports = async function(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  let message = '';
   try {
-    const rawBody = await readRequestBody(req);
-    const payload = JSON.parse(rawBody || "{}");
-    message = String(payload.message || "").trim();
-
+    message = String(req.body.message || "").trim();
     if (!message) {
-      sendJson(res, 400, { error: "Please enter a travel question." });
-      return;
+      return res.status(400).json({ error: "Please enter a travel question." });
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+      console.log("No OPENAI_API_KEY found, falling back to offline planner.");
+      return res.status(200).json({
+        model: "built-in-fallback",
+        reply: buildFallbackPlan(message)
+      });
+    }
 
-    const ollamaResponse = await fetch(OLLAMA_URL, {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      signal: controller.signal,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + openaiKey
+      },
       body: JSON.stringify({
-        model: MODEL,
-        stream: false,
+        model: "gpt-4o-mini",
         messages: [
-          {
-            role: "system",
-            content: AI_TRIP_PLANNER_SYSTEM_PROMPT
-          },
-          {
-            role: "user",
-            content: message
-          }
+          { role: "system", content: AI_TRIP_PLANNER_SYSTEM_PROMPT },
+          { role: "user", content: message }
         ]
       })
     });
 
-    clearTimeout(timeout);
-
-    if (!ollamaResponse.ok) {
-      const text = await ollamaResponse.text();
-      sendJson(res, 200, {
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI Error:", errorText);
+      return res.status(200).json({
         model: "built-in-fallback",
         reply: buildFallbackPlan(message),
-        detail: text
+        detail: "OpenAI API Error"
       });
-      return;
     }
 
-    const data = await ollamaResponse.json();
-    sendJson(res, 200, {
-      model: MODEL,
-      reply: data.message && data.message.content ? data.message.content : buildFallbackPlan(message)
+    const data = await response.json();
+    return res.status(200).json({
+      model: "openai",
+      reply: data.choices?.[0]?.message?.content || buildFallbackPlan(message)
     });
+
   } catch (error) {
-    sendJson(res, 200, {
+    console.error(error);
+    return res.status(200).json({
       model: "built-in-fallback",
       reply: buildFallbackPlan(message),
       detail: error.message
     });
   }
-}
-
-function serveStatic(req, res) {
-  const requestPath = decodeURIComponent(new URL(req.url, `http://${req.headers.host}`).pathname);
-  const safePath = requestPath === "/" ? "/index.html" : requestPath;
-  const filePath = path.normalize(path.join(PUBLIC_DIR, safePath));
-
-  if (!filePath.startsWith(PUBLIC_DIR)) {
-    res.writeHead(403);
-    res.end("Forbidden");
-    return;
-  }
-
-  fs.readFile(filePath, (error, data) => {
-    if (error) {
-      res.writeHead(404);
-      res.end("Not found");
-      return;
-    }
-
-    const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { "Content-Type": mimeTypes[ext] || "application/octet-stream" });
-    res.end(data);
-  });
-}
-
-const server = http.createServer((req, res) => {
-  if (req.method === "POST" && req.url === "/api/chat") {
-    handleChat(req, res);
-    return;
-  }
-
-  if (req.method === "GET") {
-    serveStatic(req, res);
-    return;
-  }
-
-  sendJson(res, 405, { error: "Method not allowed" });
-});
-
-server.listen(PORT, () => {
-  console.log(`Trip Planner dashboard running at http://localhost:${PORT}`);
-  console.log(`Using Ollama model: ${MODEL}`);
-});
-
-
-
-
-
-
-
-
+};
