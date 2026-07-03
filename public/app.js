@@ -1,4 +1,4 @@
-﻿const chatForm = document.querySelector("#chatForm");
+const chatForm = document.querySelector("#chatForm");
 const chatWindow = document.querySelector("#chatWindow");
 const messageInput = document.querySelector("#messageInput");
 const statusButton = document.querySelector("#statusButton");
@@ -10,7 +10,7 @@ const pageTitle = document.querySelector(".page-title h2");
 
 let activeTrip = null;
 let activeView = "dashboard";
-const CHAT_TIMEOUT_MS = 8000;
+const CHAT_TIMEOUT_MS = 60000;
 
 const destinationGuides = [
   {
@@ -454,7 +454,8 @@ async function sendMessage(text) {
     if (!response.ok) throw new Error(data.error || "The assistant could not answer right now.");
     loading.querySelector("p").textContent = data.reply;
   } catch (error) {
-    loading.querySelector("p").textContent = trip ? `Active trip updated for ${trip.destination}. Open the sidebar sections for hotels, attractions, weather, food, budget, itinerary, packing, and tips.` : "I am ready, but the chat request did not finish. Please include destination, number of days, and budget, then try again.";
+    loading.querySelector("p").textContent = `Error: ${error.message}`;
+    console.error(error);
   }
 }
 
